@@ -11,6 +11,10 @@ package userfaultfd
 #include <linux/userfaultfd.h>
 #include <sys/ioctl.h>
 
+#ifndef UFFD_FEATURE_WP_HUGETLBFS_SHMEM
+#define UFFD_FEATURE_WP_HUGETLBFS_SHMEM 0
+#endif
+
 struct uffd_pagefault {
 	__u64	flags;
 	__u64	address;

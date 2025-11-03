@@ -1,15 +1,10 @@
 job "template-manager-system" {
-  datacenters = ["${gcp_zone}"]
-  type = "system"
-  node_pool  = "${node_pool}"
+  datacenters = ["e2b-dc"]
+  type = "service"
+  node_pool  = "default"
   priority = 70
 
 # https://developer.hashicorp.com/nomad/docs/job-specification/update
-%{ if update_stanza }
-  update {
-    max_parallel      = 1    # Update only 1 node at a time
-  }
-%{ endif }
 
   group "template-manager" {
 
@@ -24,13 +19,13 @@ job "template-manager-system" {
 
     network {
       port "template-manager" {
-        static = "${port}"
+        static = "9093"
       }
     }
 
     service {
       name = "template-manager"
-      port = "${port}"
+      port = "9093"
 
       check {
         type         = "grpc"
@@ -38,19 +33,15 @@ job "template-manager-system" {
         interval     = "20s"
         timeout      = "5s"
         grpc_use_tls = false
-        port         = "${port}"
+        port         = "9093"
       }
     }
 
     task "start" {
       driver = "raw_exec"
 
-%{ if update_stanza }
-      # https://developer.hashicorp.com/nomad/docs/configuration/client#max_kill_timeout
-      kill_timeout      = "20m"
-%{ else }
-      kill_timeout      = "1m"
-%{ endif }
+     kill_timeout      = "10m"
+
       kill_signal  = "SIGTERM"
 
       resources {
@@ -59,43 +50,28 @@ job "template-manager-system" {
       }
 
       env {
-        NODE_ID                       = "$${node.unique.name}"
-        CONSUL_TOKEN                  = "${consul_acl_token}"
-        GOOGLE_SERVICE_ACCOUNT_BASE64 = "${google_service_account_key}"
-        GCP_PROJECT_ID                = "${gcp_project}"
-        GCP_REGION                    = "${gcp_region}"
-        GCP_DOCKER_REPOSITORY_NAME    = "${docker_registry}"
-        API_SECRET                    = "${api_secret}"
-        OTEL_TRACING_PRINT            = "${otel_tracing_print}"
-        ENVIRONMENT                   = "${environment}"
-        TEMPLATE_BUCKET_NAME          = "${template_bucket_name}"
-        BUILD_CACHE_BUCKET_NAME       = "${build_cache_bucket_name}"
-        OTEL_COLLECTOR_GRPC_ENDPOINT  = "${otel_collector_grpc_endpoint}"
-        LOGS_COLLECTOR_ADDRESS        = "${logs_collector_address}"
-        ORCHESTRATOR_SERVICES         = "${orchestrator_services}"
-        SHARED_CHUNK_CACHE_PATH       = "${shared_chunk_cache_path}"
-        CLICKHOUSE_CONNECTION_STRING  = "${clickhouse_connection_string}"
-        DOCKERHUB_REMOTE_REPOSITORY_URL  = "${dockerhub_remote_repository_url}"
-        GRPC_PORT                     = "${port}"
+        NODE_ID                       = "43cd2f53"
+        CONSUL_TOKEN                  = "d0ba2421-2e78-a365-13d7-14110c2e1990"
+        API_SECRET                    = ""
+        OTEL_TRACING_PRINT            = "false"
+        ENVIRONMENT                   = "dev"
+        TEMPLATE_BUCKET_NAME          = "skip"
+        STORAGE_PROVIDER              = "Local"
+        BUILD_CACHE_BUCKET_NAME       = ""
+        OTEL_COLLECTOR_GRPC_ENDPOINT  = "localhost:4317"
+        LOGS_COLLECTOR_ADDRESS        = "http://localhost:8081"
+        ORCHESTRATOR_SERVICES         = "template-manager"
+        SHARED_CHUNK_CACHE_PATH       = ""
+        CLICKHOUSE_CONNECTION_STRING  = "http://clickhouse.service.consul:8123"
+        DOCKERHUB_REMOTE_REPOSITORY_URL  = ""
+        ARTIFACTS_REGISTRY_PROVIDER   = "Local"
+        GRPC_PORT                     = "9093"
         GIN_MODE                      = "release"
-%{ if !update_stanza }
-        FORCE_STOP                    = "true"
-%{ endif }
-%{ if launch_darkly_api_key != "" }
-        LAUNCH_DARKLY_API_KEY         = "${launch_darkly_api_key}"
-%{ endif }
+
       }
 
       config {
-        command = "/bin/bash"
-        args    = ["-c", " chmod +x local/template-manager && local/template-manager"]
-      }
-
-      artifact {
-        source      = "gcs::https://www.googleapis.com/storage/v1/${bucket_name}/template-manager"
-        options {
-            checksum    = "md5:${template_manager_checksum}"
-        }
+        command = "/opt/template-manager/template-manager"
       }
     }
   }

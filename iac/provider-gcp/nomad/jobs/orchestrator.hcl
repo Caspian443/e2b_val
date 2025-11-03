@@ -1,13 +1,13 @@
-job "orchestrator-${latest_orchestrator_job_id}" {
+job "orchestrator-1" {
   type = "system"
-  node_pool = "${node_pool}"
+  node_pool = "default"
 
   priority = 90
 
   group "client-orchestrator" {
     service {
       name = "orchestrator"
-      port = "${port}"
+      port = "9090"
 
       check {
         type         = "grpc"
@@ -15,42 +15,13 @@ job "orchestrator-${latest_orchestrator_job_id}" {
         interval     = "20s"
         timeout      = "5s"
         grpc_use_tls = false
-        port         = "${port}"
+        port         = "9090"
       }
     }
 
     service {
       name = "orchestrator-proxy"
-      port = "${proxy_port}"
-    }
-
-    task "check-placement" {
-      driver = "raw_exec"
-
-      lifecycle {
-        hook = "prestart"
-        sidecar = false
-      }
-
-      restart {
-        attempts = 0
-      }
-
-      template {
-        destination = "local/check-placement.sh"
-        data = <<EOT
-#!/bin/bash
-
-if [ "{{with nomadVar "nomad/jobs" }}{{ .latest_orchestrator_job_id }}{{ end }}" != "${latest_orchestrator_job_id}" ]; then
-  echo "This orchestrator is not the latest version, exiting"
-  exit 1
-fi
-EOT
-      }
-
-      config {
-        command = "local/check-placement.sh"
-      }
+      port = "9091"
     }
 
     task "start" {
@@ -62,39 +33,28 @@ EOT
 
       env {
         NODE_ID                      = "$${node.unique.name}"
-        CONSUL_TOKEN                 = "${consul_acl_token}"
-        OTEL_TRACING_PRINT           = "${otel_tracing_print}"
-        LOGS_COLLECTOR_ADDRESS       = "${logs_collector_address}"
-        ENVIRONMENT                  = "${environment}"
-        ENVD_TIMEOUT                 = "${envd_timeout}"
-        TEMPLATE_BUCKET_NAME         = "${template_bucket_name}"
-        OTEL_COLLECTOR_GRPC_ENDPOINT = "${otel_collector_grpc_endpoint}"
-        ALLOW_SANDBOX_INTERNET       = "${allow_sandbox_internet}"
-        SHARED_CHUNK_CACHE_PATH      = "${shared_chunk_cache_path}"
-        CLICKHOUSE_CONNECTION_STRING = "${clickhouse_connection_string}"
-        REDIS_URL                    = "${redis_url}"
-        REDIS_CLUSTER_URL            = "${redis_cluster_url}"
-        GRPC_PORT                    = "${port}"
-        PROXY_PORT                   = "${proxy_port}"
+        CONSUL_TOKEN                 = "d0ba2421-2e78-a365-13d7-14110c2e1990"
+        OTEL_TRACING_PRINT           = "false"
+        LOGS_COLLECTOR_ADDRESS       = "http://localhost:8081"
+        ENVIRONMENT                  = "dev"
+        ENVD_TIMEOUT                 = ""
+        TEMPLATE_BUCKET_NAME         = "skip"
+        STORAGE_PROVIDER = "Local"
+        OTEL_COLLECTOR_GRPC_ENDPOINT = "localhost:4317"
+        ALLOW_SANDBOX_INTERNET       = ""
+        SHARED_CHUNK_CACHE_PATH      = ""
+        CLICKHOUSE_CONNECTION_STRING = ""
+        REDIS_URL                    = "192.168.0.182:6379"
+        REDIS_CLUSTER_URL            = ""
+        GRPC_PORT                    = "9090"
+        PROXY_PORT                   = "9091"
         GIN_MODE                     = "release"
+        LAUNCH_DARKLY_API_KEY         = ""
 
-%{ if launch_darkly_api_key != "" }
-        LAUNCH_DARKLY_API_KEY         = "${launch_darkly_api_key}"
-%{ endif }
       }
 
       config {
-        command = "/bin/bash"
-        args    = ["-c", " chmod +x local/orchestrator && local/orchestrator"]
-      }
-
-      artifact {
-        %{ if environment == "dev" }
-        // Version hash is only available for dev to increase development speed in prod use rolling updates
-        source      = "gcs::https://www.googleapis.com/storage/v1/${bucket_name}/orchestrator?version=${orchestrator_checksum}"
-        %{ else }
-        source      = "gcs::https://www.googleapis.com/storage/v1/${bucket_name}/orchestrator"
-        %{ endif }
+        command = "/e2b-ebm/infra/packages/orchestrator/bin/orchestrator"
       }
     }
   }

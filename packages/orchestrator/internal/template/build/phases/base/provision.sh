@@ -21,6 +21,19 @@ done
 
 if [ -n "$MISSING" ]; then
     echo "Missing packages detected, installing:$MISSING"
+    UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
+    if [ -n "$UBUNTU_CODENAME" ]; then
+        echo "Replacing Ubuntu sources with Aliyun mirror (China) for $UBUNTU_CODENAME"
+        cat > /etc/apt/sources.list <<EOF
+deb http://mirrors.aliyun.com/ubuntu/ $UBUNTU_CODENAME main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ $UBUNTU_CODENAME-updates main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ $UBUNTU_CODENAME-backports main restricted universe multiverse
+deb http://mirrors.aliyun.com/ubuntu/ $UBUNTU_CODENAME-security main restricted universe multiverse
+EOF
+    else
+        echo "Warning: Could not detect Ubuntu codename, keeping original sources"
+    fi
+
     apt-get -q update
     DEBIAN_FRONTEND=noninteractive DEBCONF_NOWARNINGS=yes apt-get -qq -o=Dpkg::Use-Pty=0 install -y --no-install-recommends $MISSING
 else
