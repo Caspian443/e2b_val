@@ -263,7 +263,8 @@ func RemoveFile(ctx context.Context, rootfsPath string, filePath string) error {
 }
 
 // MountOverlayFS mounts an overlay filesystem with the specified layers at the given mount point.
-// It tries to use the new fsconfig interface (kernel 6.8+) first, and falls back to the old mount syscall.
+// It requires kernel version 6.8 or later to use the fsconfig interface for overlayfs.
+// Older mount syscall is not used because it has lowerdirs character limit (4096 characters).
 func MountOverlayFS(ctx context.Context, layers []string, mountPoint string) error {
 	_, mountSpan := tracer.Start(ctx, "mount-overlay-fs", trace.WithAttributes(
 		attribute.String("mount", mountPoint),
@@ -271,19 +272,6 @@ func MountOverlayFS(ctx context.Context, layers []string, mountPoint string) err
 	))
 	defer mountSpan.End()
 
-	// Try new fsconfig API first (kernel 6.8+)
-	err := mountOverlayFSNew(layers, mountPoint)
-	if err == nil {
-		return nil
-	}
-
-	// Fall back to old mount syscall for older kernels
-	zap.L().Debug("fsconfig API failed, falling back to old mount syscall", zap.Error(err))
-	return mountOverlayFSOld(layers, mountPoint)
-}
-
-// mountOverlayFSNew uses the new fsconfig API (kernel 6.8+)
-func mountOverlayFSNew(layers []string, mountPoint string) error {
 	// Open the filesystem for configuration
 	fsfd, err := unix.Fsopen("overlay", unix.FSOPEN_CLOEXEC)
 	if err != nil {
@@ -291,44 +279,29 @@ func mountOverlayFSNew(layers []string, mountPoint string) error {
 	}
 	defer unix.Close(fsfd)
 
-	// Configure the filesystem
+	// Set lowerdir using FSCONFIG_SET_STRING
 	for _, layer := range layers {
-		// We need to use FsconfigSetString with a null-terminated string for "lowerdir"
-		layerBytes := []byte(layer + "\x00")
-		if err := unix.Fsconfig(fsfd, unix.FSCONFIG_SET_STRING, "lowerdir", layerBytes, 0); err != nil {
-			return fmt.Errorf("fsconfig failed for layer %s: %w", layer, err)
+		// https://docs.kernel.org/filesystems/overlayfs.html
+		if err := unix.FsconfigSetString(fsfd, "lowerdir+", layer); err != nil {
+			return fmt.Errorf("fsconfig lowerdir failed: %w", err)
 		}
 	}
 
-	// Create the filesystem
-	if err := unix.Fsconfig(fsfd, unix.FSCONFIG_CMD_CREATE, "", nil, 0); err != nil {
+	// Finalize configuration
+	if err := unix.FsconfigCreate(fsfd); err != nil {
 		return fmt.Errorf("fsconfig create failed: %w", err)
 	}
 
-	// Mount the filesystem
-	if _, err := unix.Fsmount(fsfd, 0, unix.MS_RDONLY); err != nil {
+	// Create the mount
+	mfd, err := unix.Fsmount(fsfd, 0, 0)
+	if err != nil {
 		return fmt.Errorf("fsmount failed: %w", err)
 	}
+	defer unix.Close(mfd)
 
-	// Move the mount
-	if err := unix.MoveMount(fsfd, "", -1, mountPoint, unix.MOVE_MOUNT_F_EMPTY_PATH); err != nil {
-		return fmt.Errorf("move_mount failed: %w", err)
-	}
-
-	return nil
-}
-
-// mountOverlayFSOld uses the old mount syscall for older kernels
-func mountOverlayFSOld(layers []string, mountPoint string) error {
-	// Join layers with colon separator for lowerdir option
-	lowerdir := strings.Join(layers, ":")
-
-	// Mount options for overlayfs (read-only, no upperdir/workdir)
-	options := fmt.Sprintf("lowerdir=%s", lowerdir)
-
-	// Use unix.Mount syscall
-	if err := unix.Mount("overlay", mountPoint, "overlay", 0, options); err != nil {
-		return fmt.Errorf("mount syscall failed: %w", err)
+	// Mount to target
+	if err := unix.MoveMount(mfd, "", -1, mountPoint, unix.MOVE_MOUNT_F_EMPTY_PATH); err != nil {
+		return fmt.Errorf("move mount failed: %w", err)
 	}
 
 	return nil
