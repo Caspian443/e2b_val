@@ -25,7 +25,20 @@ import (
 	"github.com/e2b-dev/infra/packages/shared/pkg/telemetry"
 )
 
-const provisionTimeout = 5 * time.Minute
+// getProvisionTimeout 从环境变量读取超时时间，默认 15 分钟（考虑网络慢的情况）
+func getProvisionTimeout() time.Duration {
+	timeoutStr := os.Getenv("PROVISION_TIMEOUT")
+	if timeoutStr == "" {
+		return 15 * time.Minute // 默认 15 分钟
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return 15 * time.Minute
+	}
+
+	return timeout
+}
 
 //go:embed provision.sh
 var provisionScriptFile string
@@ -40,6 +53,8 @@ const (
 type ProvisionScriptParams struct {
 	BusyBox    string
 	ResultPath string
+	HTTPProxy  string
+	HTTPSProxy string
 }
 
 func getProvisionScript(
@@ -80,7 +95,7 @@ func (bb *BaseBuilder) provisionSandbox(
 		sandboxRuntime,
 		fcVersions,
 		localTemplate,
-		provisionTimeout,
+		getProvisionTimeout(),
 		rootfsPath,
 		fc.ProcessOptions{
 			InitScriptPath: rootfs.BusyBoxInitPath,

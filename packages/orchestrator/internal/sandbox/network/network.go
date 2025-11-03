@@ -61,19 +61,10 @@ func (s *Slot) CreateNetwork() error {
 		return fmt.Errorf("error finding vpeer: %w", err)
 	}
 
-	err = netlink.LinkSetUp(vpeer)
+	// Move Vpeer device (eth0) into the sandbox namespace
+	err = netlink.LinkSetNsFd(vpeer, int(ns))
 	if err != nil {
-		return fmt.Errorf("error setting vpeer device up: %w", err)
-	}
-
-	err = netlink.AddrAdd(vpeer, &netlink.Addr{
-		IPNet: &net.IPNet{
-			IP:   s.VpeerIP(),
-			Mask: s.VrtMask(),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("error adding vpeer device address: %w", err)
+		return fmt.Errorf("error moving vpeer device to sandbox namespace: %w", err)
 	}
 
 	// Move Veth device to the host NS
@@ -110,6 +101,27 @@ func (s *Slot) CreateNetwork() error {
 	err = netns.Set(ns)
 	if err != nil {
 		return fmt.Errorf("error setting network namespace to %s: %w", ns.String(), err)
+	}
+
+	// Configure Vpeer (eth0) inside the sandbox namespace
+	vpeerInNS, err := netlink.LinkByName(s.VpeerName())
+	if err != nil {
+		return fmt.Errorf("error finding vpeer in namespace: %w", err)
+	}
+
+	err = netlink.LinkSetUp(vpeerInNS)
+	if err != nil {
+		return fmt.Errorf("error setting vpeer device up in namespace: %w", err)
+	}
+
+	err = netlink.AddrAdd(vpeerInNS, &netlink.Addr{
+		IPNet: &net.IPNet{
+			IP:   s.VpeerIP(),
+			Mask: s.VrtMask(),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error adding vpeer device address in namespace: %w", err)
 	}
 
 	// Create Tap device for FC in NS

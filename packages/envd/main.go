@@ -214,6 +214,13 @@ func main() {
 	portForwarder := publicport.NewForwarder(&portLogger, portScanner)
 	go portForwarder.StartForwarding(ctx)
 
+	// 延迟启动 port-forwarder，等待网络接口完全初始化
+	// 这避免了在 VM 启动早期 eth0 还未配置好时尝试绑定的问题
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		portForwarder.StartForwarding(ctx)
+	}()
+
 	go portScanner.ScanAndBroadcast()
 
 	err := s.ListenAndServe()

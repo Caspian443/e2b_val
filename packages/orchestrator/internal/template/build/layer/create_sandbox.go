@@ -13,7 +13,6 @@ import (
 	sbxtemplate "github.com/e2b-dev/infra/packages/orchestrator/internal/sandbox/template"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/build/config"
 	"github.com/e2b-dev/infra/packages/orchestrator/internal/template/constants"
-	"github.com/e2b-dev/infra/packages/shared/pkg/env"
 	"github.com/e2b-dev/infra/packages/shared/pkg/id"
 	"github.com/e2b-dev/infra/packages/shared/pkg/utils"
 )
@@ -92,8 +91,8 @@ func (cs *CreateSandbox) Sandbox(
 		cs.rootfsCachePath,
 		fc.ProcessOptions{
 			InitScriptPath:      constants.SystemdInitPath,
-			KernelLogs:          env.IsDevelopment(),
-			SystemdToKernelLogs: false,
+			KernelLogs:          true, // TEMP DEBUG: 强制启用内核日志用于诊断
+			SystemdToKernelLogs: true, // TEMP DEBUG: 启用 systemd 日志输出
 			KvmClock:            kvmClock,
 		},
 		nil,

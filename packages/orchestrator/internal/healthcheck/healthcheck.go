@@ -31,6 +31,7 @@ func (h *Healthcheck) CreateHandler() http.Handler {
 	// Start /health HTTP server
 	routeMux := http.NewServeMux()
 	routeMux.HandleFunc("/health", h.healthHandler)
+	routeMux.HandleFunc("/v1/service-discovery/nodes/orchestrators", h.serviceDiscoveryHandler)
 
 	return routeMux
 }
@@ -61,6 +62,33 @@ func (h *Healthcheck) healthHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+
+// OrchestratorNode 表示服务发现返回的节点信息
+type OrchestratorNode struct {
+	NodeID            string `json:"nodeId"`
+	ServiceInstanceID string `json:"serviceInstanceId"`
+}
+
+func (h *Healthcheck) serviceDiscoveryHandler(w http.ResponseWriter, _ *http.Request) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// 返回当前节点信息
+	nodes := []OrchestratorNode{
+		{
+			NodeID:            h.info.ClientId,
+			ServiceInstanceID: h.info.ServiceId,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(nodes); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

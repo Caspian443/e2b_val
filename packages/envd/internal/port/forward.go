@@ -132,8 +132,8 @@ func (f *Forwarder) startPortForwarding(ctx context.Context, p *PortToForward) {
 	// reuseaddr is used to fix the "Address already in use" error when restarting socat quickly.
 	cmd := exec.CommandContext(ctx,
 		"socat", "-d", "-d", "-d",
-		fmt.Sprintf("TCP4-LISTEN:%v,bind=%s,reuseaddr,fork", p.port, f.sourceIP.To4()),
-		fmt.Sprintf("TCP%d:localhost:%v", p.family, p.port),
+		fmt.Sprintf("TCP4-LISTEN:%v,bind=%s,reuseaddr,fork", p.port, f.sourceIP.String()),
+		fmt.Sprintf("TCP4:localhost:%v", p.port),
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,

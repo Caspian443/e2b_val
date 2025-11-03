@@ -31,7 +31,7 @@ func newProxyClient(
 	logger *log.Logger,
 ) *ProxyClient {
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: nil,
 		// Limit the max connection per host to avoid exhausting the number of available ports to one host.
 		MaxIdleConnsPerHost:   maxHostIdleConns,
 		MaxIdleConns:          maxIdleConns,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -44,7 +45,18 @@ var (
 var httpClient = http.Client{
 	Timeout: 10 * time.Second,
 	Transport: otelhttp.NewTransport(
-		http.DefaultTransport,
+		&http.Transport{
+			Proxy: nil, // Disable proxy for direct VM communication
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
 	),
 }
 

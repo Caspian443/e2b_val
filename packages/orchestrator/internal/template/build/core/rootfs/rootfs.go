@@ -218,12 +218,18 @@ ff02::2	ip6-allrouters
 		return nil, fmt.Errorf("error reading envd file: %w", err)
 	}
 
+	// 读取宿主机的 DNS 配置
+	dnsConfig := "nameserver 8.8.8.8" // 默认值
+	if hostDNS, err := os.ReadFile("/etc/resolv.conf"); err == nil {
+		dnsConfig = string(hostDNS)
+	}
+
 	filesLayer, err := oci.LayerFile(
 		map[string]oci.File{
 			// Setup system
 			"etc/hostname":    {Bytes: []byte(hostname), Mode: 0o644},
 			"etc/hosts":       {Bytes: []byte(hosts), Mode: 0o644},
-			"etc/resolv.conf": {Bytes: []byte("nameserver 8.8.8.8"), Mode: 0o644},
+			"etc/resolv.conf": {Bytes: []byte(dnsConfig), Mode: 0o644},
 
 			storage.GuestEnvdPath:                                            {Bytes: envdFileData, Mode: 0o777},
 			"etc/systemd/system/envd.service":                                {Bytes: []byte(envdService), Mode: 0o644},

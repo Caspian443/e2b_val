@@ -38,9 +38,22 @@ func constructLayerFilesFromOCI(
 		buildContext.Template,
 		buildContext.Config,
 	)
+	// 禁用代理：代理服务器不可用（504 错误）
+	// 让 VM 直接访问网络
+	httpProxy := ""
+	httpsProxy := ""
+
+	// 调试日志
+	userLogger.Info("Provision script proxy configuration (proxy disabled due to 504 errors)",
+		zap.String("HTTP_PROXY", httpProxy),
+		zap.String("HTTPS_PROXY", httpsProxy),
+	)
+
 	provisionScript, err := getProvisionScript(ctx, ProvisionScriptParams{
 		BusyBox:    "/" + rootfs.BusyBoxPath,
 		ResultPath: provisionScriptResultPath,
+		HTTPProxy:  httpProxy,
+		HTTPSProxy: httpsProxy,
 	})
 	if err != nil {
 		return nil, nil, containerregistry.Config{}, fmt.Errorf("error getting provision script: %w", err)
