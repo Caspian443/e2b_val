@@ -68,10 +68,9 @@ job "api" {
       }
 
       env {
-        NODE_ID                        = "ac2ddb2a"
+        NODE_ID                        = "43cd2f53"
         ORCHESTRATOR_PORT              = "9090"
-        ORCHESTRATOR_HOST              = "192.168.0.178"
-        TEMPLATE_MANAGER_HOST          = "192.168.0.180:9093"
+        TEMPLATE_MANAGER_HOST          = "192.168.161.238:9093"
 
         POSTGRES_CONNECTION_STRING     = "postgresql://e2b:Galaxy123@192.168.0.183:5432/e2b-dev?sslmode=disable"
         SUPABASE_JWT_SECRETS           = "e2b-dev-jwt-secret-change-in-production"
@@ -94,14 +93,15 @@ job "api" {
         OTEL_COLLECTOR_GRPC_ENDPOINT   = "localhost:4317"
 
         DNS_PORT                       = "53"
-        LOCAL_CLUSTER_ENDPOINT         = ""
-        LOCAL_CLUSTER_TOKEN            = ""
+        LOCAL_CLUSTER_ENDPOINT         = "192.168.0.180:3001"
+        LOCAL_CLUSTER_TOKEN            = "local-token"
+        LOCAL_CLUSTER_SANDBOX_PROXY_DOMAIN = "192.168.0.180.nip.io"
         TEMPLATE_BUCKET_NAME           = "skip"
       }
 
       config {
         network_mode = "host"
-        image        = "mp-bp-cn-shanghai.cr.volces.com/e2b/api:latest"
+        image        = "mp-bp-cn-shanghai.cr.volces.com/e2b/api-domain:latest"
         ports        = ["api"]
         dns_servers  = ["8.8.8.8", "223.5.5.5"]
         args         = [
@@ -110,4 +110,4 @@ job "api" {
       }
     }
   }
-}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

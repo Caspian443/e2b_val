@@ -66,12 +66,12 @@ job "client-proxy" {
         EDGE_PORT         = "3001"
         EDGE_SECRET       = "local-token"
         PROXY_PORT        = "3002"
-        ORCHESTRATOR_PORT = "9093"
+        ORCHESTRATOR_PORT = "9090"
 
         SD_ORCHESTRATOR_PROVIDER         = "NOMAD"
         SD_ORCHESTRATOR_NOMAD_ENDPOINT   = "http://localhost:4646"
         SD_ORCHESTRATOR_NOMAD_TOKEN      = "79fd6fb2-ef94-7b05-8eb3-7cabf872c90f"
-        SD_ORCHESTRATOR_NOMAD_JOB_PREFIX = "template-manager"
+        SD_ORCHESTRATOR_NOMAD_JOB_PREFIX = "orchestrator-1"
 
         SD_EDGE_PROVIDER             = "NOMAD"
         SD_EDGE_NOMAD_ENDPOINT       = "http://localhost:4646"

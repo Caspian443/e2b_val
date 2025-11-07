@@ -45,7 +45,7 @@ job "template-manager-system" {
       kill_signal  = "SIGTERM"
 
       resources {
-        memory     = 1024
+        memory     = 10240
         cpu        = 256
       }
 
@@ -55,6 +55,7 @@ job "template-manager-system" {
         API_SECRET                    = ""
         OTEL_TRACING_PRINT            = "false"
         ENVIRONMENT                   = "dev"
+        PROXY_PORT                    = "9091"
         TEMPLATE_BUCKET_NAME          = "skip"
         STORAGE_PROVIDER              = "Local"
         BUILD_CACHE_BUCKET_NAME       = ""
