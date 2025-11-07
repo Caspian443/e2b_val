@@ -218,11 +218,13 @@ ff02::2	ip6-allrouters
 		return nil, fmt.Errorf("error reading envd file: %w", err)
 	}
 
-	// 读取宿主机的 DNS 配置
-	dnsConfig := "nameserver 8.8.8.8" // 默认值
-	if hostDNS, err := os.ReadFile("/etc/resolv.conf"); err == nil {
-		dnsConfig = string(hostDNS)
-	}
+	// // 读取宿主机的 DNS 配置
+	// dnsConfig := "nameserver 8.8.8.8" // 默认值
+	// 使用可靠的公共 DNS，而不是可能无法从沙箱访问的主机配置。
+	// AliDNS 在中国速度很快，114 DNS 和 Google DNS 作为备用。
+	dnsConfig := `nameserver 223.5.5.5
+nameserver 114.114.114.114
+nameserver 8.8.8.8`
 
 	filesLayer, err := oci.LayerFile(
 		map[string]oci.File{
